@@ -23,7 +23,7 @@ var (
 	userID       string
 	todoFile     string
 	debounce     = 2 * time.Second
-	pollInterval = 30 * time.Second // Poll Supabase for changes every 30 seconds
+	pollInterval = 120 * time.Second // Poll Supabase for changes every 120 seconds
 )
 
 type Task struct {
