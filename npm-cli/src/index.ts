@@ -31,9 +31,83 @@ function loadEnv(): void {
 
 loadEnv();
 
-const SUPABASE_URL = process.env.SUPABASE_URL || '';
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-const USER_ID = process.env.TELEGRAM_CHAT_ID || 'cli';
+const DEFAULT_SUPABASE_URL = 'https://awpmhcblqvvliarpcawk.supabase.co';
+const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMjkzMTcsImV4cCI6MjA1MzkwNTMxN30.o-EHM0FGwPpJu6Ge7ePMKP_GYNCsOOqSzmLvSgPQbvI';
+
+let SUPABASE_URL = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+let SUPABASE_KEY = '';
+let USER_ID = '';
+let API_TOKEN = '';
+
+// Try to load API token
+function loadApiToken(): string {
+  // Check env var first
+  if (process.env.TODO_CLI_TOKEN) {
+    return process.env.TODO_CLI_TOKEN;
+  }
+  // Try ~/.todo-cli-token
+  const tokenPath = path.join(process.env.HOME || '', '.todo-cli-token');
+  if (fs.existsSync(tokenPath)) {
+    return fs.readFileSync(tokenPath, 'utf-8').trim();
+  }
+  return '';
+}
+
+async function verifyToken(token: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${SUPABASE_URL}/functions/v1/auth-verify`);
+    
+    const options = {
+      hostname: url.hostname,
+      path: url.pathname,
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+      },
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => data += chunk);
+      res.on('end', () => {
+        if (res.statusCode === 200) {
+          const result = JSON.parse(data);
+          resolve(result.user_id);
+        } else {
+          const err = JSON.parse(data);
+          reject(new Error(err.error || 'Invalid token'));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+async function initAuth(): Promise<void> {
+  API_TOKEN = loadApiToken();
+  
+  if (API_TOKEN) {
+    try {
+      USER_ID = await verifyToken(API_TOKEN);
+      SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+    } catch (err: any) {
+      console.error(`❌ Invalid API token: ${err.message}`);
+      process.exit(1);
+    }
+  } else {
+    // Fall back to service role key (legacy mode)
+    SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    USER_ID = process.env.TELEGRAM_CHAT_ID || 'cli';
+    
+    if (!SUPABASE_KEY) {
+      console.error('❌ No API token found. Generate one with /token in Telegram bot.');
+      console.error('   Save token to ~/.todo-cli-token or set TODO_CLI_TOKEN env var.');
+      process.exit(1);
+    }
+  }
+}
 
 interface Task {
   id: number;
@@ -299,26 +373,28 @@ Commands:
 
   help                   Show this help message
 
-Configuration:
-  Create a .env file in current directory or ~/.todo-cli.env with:
-    SUPABASE_URL=https://your-project.supabase.co
-    SUPABASE_SERVICE_ROLE_KEY=your-key
-    TELEGRAM_CHAT_ID=your-user-id`);
+Authentication:
+  1. Generate token: Send /token to the Telegram bot
+  2. Save token to ~/.todo-cli-token or set TODO_CLI_TOKEN env var
+
+  Legacy mode (service role key):
+    Create .env file or ~/.todo-cli.env with:
+      SUPABASE_URL=https://your-project.supabase.co
+      SUPABASE_SERVICE_ROLE_KEY=your-key
+      TELEGRAM_CHAT_ID=your-user-id`);
 }
 
 async function main(): Promise<void> {
-  if (!SUPABASE_URL || !SUPABASE_KEY) {
-    console.log('❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY');
-    console.log('   Create .env file or ~/.todo-cli.env with your credentials');
-    process.exit(1);
-  }
-
   const args = process.argv.slice(2);
   
-  if (args.length === 0) {
+  // Show help without auth
+  if (args.length === 0 || args[0] === 'help' || args[0] === '--help' || args[0] === '-h') {
     printHelp();
     return;
   }
+
+  // Initialize auth before running commands
+  await initAuth();
 
   const cmd = args[0];
   const cmdArgs = args.slice(1);

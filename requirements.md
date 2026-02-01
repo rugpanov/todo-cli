@@ -162,6 +162,8 @@ Have a great week ahead! 🚀
 | `/done <task_id>` | Mark task as complete | `/done abc123` |
 | `/snooze <task_id>` | Push task to tomorrow | `/snooze abc123` |
 | `/subtask <parent_id> <task>` | Add subtask to existing task | `/subtask 2 Review section A` |
+| `/token [name]` | Generate API token for CLI | `/token laptop` |
+| `/revoke [id]` | List or revoke API tokens | `/revoke 5` |
 
 **Task ID:** Each task in notifications should include a short ID (from Notion page ID) for easy reference.
 
@@ -211,7 +213,42 @@ Have a great week ahead! 🚀
 
 ---
 
-### FR-6: Real-time Notifications
+### FR-6: Token-Based Authentication
+
+**Purpose:** Allow CLI tools to authenticate without exposing service role keys.
+
+**Database Schema:**
+
+| Property | Type | Description |
+|----------|------|-------------|
+| **id** | SERIAL | Primary key |
+| **user_id** | TEXT | Telegram Chat ID of token owner |
+| **token_hash** | TEXT | SHA-256 hash of the token (unique) |
+| **name** | TEXT | User-friendly token name |
+| **created_at** | TIMESTAMPTZ | Token creation time |
+| **expires_at** | TIMESTAMPTZ | Token expiration (default: 1 year) |
+
+**Token Flow:**
+1. User sends `/token [name]` to Telegram bot
+2. Bot generates random token (UUID-based)
+3. Bot stores SHA-256 hash in `api_tokens` table
+4. Bot sends plaintext token to user (shown once only)
+5. User saves token to `~/.todo-cli-token` or `TODO_CLI_TOKEN` env var
+
+**CLI Authentication:**
+1. CLI reads token from `~/.todo-cli-token` or `TODO_CLI_TOKEN`
+2. CLI calls `auth-verify` edge function with token in Authorization header
+3. Edge function hashes token, looks up in database
+4. If valid and not expired, returns `user_id`
+5. CLI uses `user_id` for all subsequent API calls
+
+**Token Management:**
+- `/revoke` — List all user's tokens with IDs
+- `/revoke <id>` — Delete specific token
+
+---
+
+### FR-7: Real-time Notifications
 
 **Status:** Not required (disabled)
 
@@ -222,7 +259,7 @@ No real-time alerts for:
 
 ---
 
-### FR-7: Timezone & Schedule
+### FR-8: Timezone & Schedule
 
 | Setting | Value |
 |---------|-------|

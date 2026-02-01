@@ -16,10 +16,19 @@ import (
 	"github.com/joho/godotenv"
 )
 
+type AuthMode int
+
+const (
+	AuthModeServiceKey AuthMode = iota
+	AuthModeToken
+)
+
 var (
 	supabaseURL string
 	supabaseKey string
 	userID      string
+	apiToken    string
+	authMode    AuthMode
 )
 
 type Task struct {
@@ -41,16 +50,49 @@ func main() {
 	godotenv.Load() // Also try current directory
 
 	supabaseURL = os.Getenv("SUPABASE_URL")
-	supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-	userID = os.Getenv("TELEGRAM_CHAT_ID")
-
-	if supabaseURL == "" || supabaseKey == "" {
-		fmt.Println("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY in environment")
-		os.Exit(1)
+	if supabaseURL == "" {
+		supabaseURL = "https://awpmhcblqvvliarpcawk.supabase.co"
 	}
 
-	if userID == "" {
-		userID = "cli"
+	// Try token-based auth first
+	apiToken = os.Getenv("TODO_CLI_TOKEN")
+	if apiToken == "" {
+		// Try reading from ~/.todo-cli-token
+		if home, err := os.UserHomeDir(); err == nil {
+			if data, err := os.ReadFile(filepath.Join(home, ".todo-cli-token")); err == nil {
+				apiToken = strings.TrimSpace(string(data))
+			}
+		}
+	}
+
+	if apiToken != "" {
+		// Verify token and get user_id
+		if uid, err := verifyToken(apiToken); err == nil {
+			authMode = AuthModeToken
+			userID = uid
+			supabaseKey = os.Getenv("SUPABASE_ANON_KEY")
+			if supabaseKey == "" {
+				supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMjkzMTcsImV4cCI6MjA1MzkwNTMxN30.o-EHM0FGwPpJu6Ge7ePMKP_GYNCsOOqSzmLvSgPQbvI"
+			}
+		} else {
+			fmt.Printf("❌ Invalid API token: %v\n", err)
+			os.Exit(1)
+		}
+	} else {
+		// Fall back to service role key (legacy mode)
+		authMode = AuthModeServiceKey
+		supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+		userID = os.Getenv("TELEGRAM_CHAT_ID")
+
+		if supabaseKey == "" {
+			fmt.Println("❌ No API token found. Generate one with /token in Telegram bot.")
+			fmt.Println("   Save token to ~/.todo-cli-token or set TODO_CLI_TOKEN env var.")
+			os.Exit(1)
+		}
+
+		if userID == "" {
+			userID = "cli"
+		}
 	}
 
 	if len(os.Args) < 2 {
@@ -270,6 +312,36 @@ func cmdSubtask(args []string) {
 	}
 
 	fmt.Printf("✅ Subtask added: %s (under #%d)\n", result.Title, parentID)
+}
+
+// Auth helpers
+
+func verifyToken(token string) (string, error) {
+	req, _ := http.NewRequest("GET", supabaseURL+"/functions/v1/auth-verify", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return "", err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		var errResp struct {
+			Error string `json:"error"`
+		}
+		json.Unmarshal(body, &errResp)
+		return "", fmt.Errorf("%s", errResp.Error)
+	}
+
+	var result struct {
+		Valid    bool   `json:"valid"`
+		UserID   string `json:"user_id"`
+		TokenName string `json:"token_name"`
+	}
+	json.NewDecoder(resp.Body).Decode(&result)
+	return result.UserID, nil
 }
 
 // Supabase API helpers

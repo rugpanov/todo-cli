@@ -4,7 +4,7 @@ A TODO tracker with multiple interfaces: Telegram bot, CLI, and Obsidian sync.
 
 ## Features
 
-- **Telegram Bot:** `/add`, `/list`, `/done`, `/snooze`, `/subtask`
+- **Telegram Bot:** `/add`, `/list`, `/done`, `/snooze`, `/subtask`, `/token`, `/revoke`
 - **CLI Tool:** `todo add`, `todo list`, `todo done`, etc.
 - **Obsidian Sync:** Two-way sync with markdown files
 - **Daily Digest:** 7:30 AM CET — overdue, today, next 2 days, completed yesterday
@@ -23,12 +23,21 @@ A TODO tracker with multiple interfaces: Telegram bot, CLI, and Obsidian sync.
 /done 2             - Mark task #2 as done
 /snooze 3           - Postpone task #3 to tomorrow
 /subtask 2 Buy milk - Add subtask to task #2
+/token laptop     - Generate API token for CLI
+/revoke           - List your API tokens
+/revoke 5         - Revoke token #5
 ```
 
 ### Option 2: CLI Tool
 
 ```bash
-# Build
+# 1. Generate API token (in Telegram)
+#    Send /token to the bot, save the token
+
+# 2. Save token
+echo "your-token-here" > ~/.todo-cli-token
+
+# 3. Build and use
 go build -o todo ./cmd/todo/
 
 # Usage
@@ -85,7 +94,8 @@ todo-tracker/
 │   ├── functions/
 │   │   ├── telegram-webhook/   # Command handler
 │   │   ├── daily-digest/       # Morning notification
-│   │   └── weekly-report/      # Sunday summary
+│   │   ├── weekly-report/      # Sunday summary
+│   │   └── auth-verify/        # Token authentication
 │   └── migrations/             # Database schema
 ├── cmd/
 │   ├── todo/                   # CLI tool
@@ -97,7 +107,17 @@ todo-tracker/
 └── steps.md                    # Development checklist
 ```
 
-## Environment Variables
+## Authentication
+
+### For CLI Users (Recommended)
+
+1. Send `/token` to the Telegram bot
+2. Save the token: `echo "your-token" > ~/.todo-cli-token`
+3. CLI will automatically authenticate using this token
+
+Alternatively, set `TODO_CLI_TOKEN` environment variable.
+
+### For Developers (Legacy)
 
 Required secrets (set via `supabase secrets set`):
 - `TELEGRAM_BOT_TOKEN`
@@ -114,6 +134,7 @@ Auto-available in edge functions:
 supabase functions deploy telegram-webhook --no-verify-jwt
 supabase functions deploy daily-digest --no-verify-jwt
 supabase functions deploy weekly-report --no-verify-jwt
+supabase functions deploy auth-verify --no-verify-jwt
 
 # Set secrets
 supabase secrets set TELEGRAM_BOT_TOKEN=<token>
@@ -141,6 +162,7 @@ SELECT cron.schedule(
 ## Database Schema
 
 ```sql
+-- Tasks table
 CREATE TABLE tasks (
   id SERIAL PRIMARY KEY,
   title TEXT NOT NULL,
@@ -150,5 +172,15 @@ CREATE TABLE tasks (
   parent_id INTEGER REFERENCES tasks(id),
   user_id TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- API tokens for CLI authentication
+CREATE TABLE api_tokens (
+  id SERIAL PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token_hash TEXT NOT NULL UNIQUE,
+  name TEXT DEFAULT 'CLI Token',
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '1 year'
 );
 ```
