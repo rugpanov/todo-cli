@@ -77,7 +77,9 @@ func main() {
 			exportToMarkdown()
 			return
 		case "watch":
-			// Continue to watch mode
+			// Export first, then watch
+			exportToMarkdown()
+			fmt.Println()
 		case "help", "--help", "-h":
 			fmt.Println(`Obsidian Sync - Two-way sync between Supabase and Obsidian
 
@@ -85,7 +87,7 @@ Usage: obsidian-sync [command]
 
 Commands:
   export    Export tasks from Supabase to markdown file
-  watch     Watch file for changes and sync back (default)
+  watch     Export tasks and watch for changes (default)
   help      Show this help message
 
 Environment:
@@ -94,12 +96,10 @@ Environment:
 		}
 	}
 
-	// Check if file exists, create if not
-	if _, err := os.Stat(todoFile); os.IsNotExist(err) {
-		fmt.Printf("📝 Creating %s\n", todoFile)
-		os.MkdirAll(filepath.Dir(todoFile), 0755)
-		exportToMarkdown()
-	}
+	// Always export on startup to ensure file is up-to-date
+	os.MkdirAll(filepath.Dir(todoFile), 0755)
+	exportToMarkdown()
+	fmt.Println()
 
 	fmt.Printf("👀 Watching %s for changes...\n", todoFile)
 	fmt.Println("   Press Ctrl+C to stop")
