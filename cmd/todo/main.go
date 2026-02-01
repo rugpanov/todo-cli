@@ -108,7 +108,7 @@ func main() {
 		cmdAdd(args)
 	case "list", "ls":
 		cmdList()
-	case "done":
+	case "done", "rm":
 		cmdDone(args)
 	case "snooze":
 		cmdSnooze(args)
@@ -137,7 +137,7 @@ Commands:
 
   list, ls               Show all pending tasks
 
-  done <id>              Mark task as complete
+  done, rm <id>          Mark task as complete
                          Example: todo done 5
 
   snooze <id>            Postpone task to tomorrow

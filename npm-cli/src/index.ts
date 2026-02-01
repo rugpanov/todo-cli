@@ -367,7 +367,7 @@ Commands:
 
   list, ls               Show all pending tasks
 
-  done <id>              Mark task as complete
+  done, rm <id>          Mark task as complete
                          Example: todo done 5
 
   snooze <id>            Postpone task to tomorrow
@@ -414,6 +414,7 @@ async function main(): Promise<void> {
         await cmdList();
         break;
       case 'done':
+      case 'rm':
         await cmdDone(cmdArgs);
         break;
       case 'snooze':

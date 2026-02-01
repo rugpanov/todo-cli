@@ -1,6 +1,6 @@
 {
-  "name": "todo-cli-tracker",
-  "version": "1.0.0",
+  "name": "@rugpanov/todo-cli",
+  "version": "1.4.0",
   "description": "A CLI TODO tracker with Supabase backend",
   "main": "dist/index.js",
   "bin": {
