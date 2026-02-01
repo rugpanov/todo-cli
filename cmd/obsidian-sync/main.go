@@ -18,11 +18,12 @@ import (
 )
 
 var (
-	supabaseURL string
-	supabaseKey string
-	userID      string
-	todoFile    string
-	debounce    = 2 * time.Second
+	supabaseURL  string
+	supabaseKey  string
+	userID       string
+	todoFile     string
+	debounce     = 2 * time.Second
+	pollInterval = 30 * time.Second // Poll Supabase for changes every 30 seconds
 )
 
 type Task struct {
@@ -127,7 +128,14 @@ func watchFile() {
 	}
 
 	var lastEvent time.Time
+	var lastPoll time.Time
 	filename := filepath.Base(todoFile)
+
+	// Start polling ticker for remote changes
+	pollTicker := time.NewTicker(pollInterval)
+	defer pollTicker.Stop()
+
+	fmt.Printf("   Polling Supabase every %v for remote changes\n", pollInterval)
 
 	for {
 		select {
@@ -150,6 +158,16 @@ func watchFile() {
 				time.Sleep(500 * time.Millisecond) // Wait for file to be fully written
 				syncFromMarkdown()
 			}
+		case <-pollTicker.C:
+			// Skip if we just processed a local file change
+			if time.Since(lastEvent) < pollInterval {
+				continue
+			}
+			// Poll for remote changes
+			if checkAndUpdateFromRemote() {
+				lastPoll = time.Now()
+				_ = lastPoll // Suppress unused warning
+			}
 		case err, ok := <-watcher.Errors:
 			if !ok {
 				return
@@ -159,6 +177,36 @@ func watchFile() {
 	}
 }
 
+// checkAndUpdateFromRemote fetches tasks from Supabase and updates the local file if there are changes
+func checkAndUpdateFromRemote() bool {
+	tasks, err := fetchTasks()
+	if err != nil {
+		return false
+	}
+
+	// Read current file to compare
+	currentContent, err := os.ReadFile(todoFile)
+	if err != nil {
+		return false
+	}
+
+	// Build new content
+	newContent := buildMarkdownContent(tasks)
+
+	// Compare and update if different
+	if string(currentContent) != newContent {
+		fmt.Printf("🔄 Remote changes detected, updating file...\n")
+		err = os.WriteFile(todoFile, []byte(newContent), 0644)
+		if err != nil {
+			fmt.Printf("❌ Failed to update file: %v\n", err)
+			return false
+		}
+		fmt.Printf("✅ File updated with %d tasks\n", len(tasks))
+		return true
+	}
+	return false
+}
+
 func exportToMarkdown() {
 	tasks, err := fetchTasks()
 	if err != nil {
@@ -166,6 +214,16 @@ func exportToMarkdown() {
 		return
 	}
 
+	content := buildMarkdownContent(tasks)
+	err = os.WriteFile(todoFile, []byte(content), 0644)
+	if err != nil {
+		fmt.Printf("❌ Failed to write file: %v\n", err)
+		return
+	}
+	fmt.Printf("✅ Exported %d tasks to %s\n", len(tasks), todoFile)
+}
+
+func buildMarkdownContent(tasks []Task) string {
 	today := time.Now().Format("2006-01-02")
 	var overdue, todayTasks, upcoming []Task
 
@@ -210,12 +268,7 @@ func exportToMarkdown() {
 		sb.WriteString("No pending tasks! 🎉\n")
 	}
 
-	err = os.WriteFile(todoFile, []byte(sb.String()), 0644)
-	if err != nil {
-		fmt.Printf("❌ Failed to write file: %v\n", err)
-		return
-	}
-	fmt.Printf("✅ Exported %d tasks to %s\n", len(tasks), todoFile)
+	return sb.String()
 }
 
 func formatTaskMD(t Task) string {
