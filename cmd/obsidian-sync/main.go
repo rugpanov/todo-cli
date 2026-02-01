@@ -223,8 +223,8 @@ func formatTaskMD(t Task) string {
 	if t.Status == "Done" {
 		checkbox = "- [x]"
 	}
-	// Format: - [ ] Task title [P1] — due 2026-02-02 <!-- id:5 -->
-	return fmt.Sprintf("%s %s [%s] — due %s <!-- id:%d -->\n", checkbox, t.Title, t.Priority, t.DueDate, t.ID)
+	// Format: - [ ] Task title — P1 — id:5 — due:2026-02-02
+	return fmt.Sprintf("%s %s — %s — id:%d — due:%s\n", checkbox, t.Title, t.Priority, t.ID, t.DueDate)
 }
 
 func syncFromMarkdown() {
@@ -235,17 +235,17 @@ func syncFromMarkdown() {
 	}
 
 	// Parse checkboxes with IDs
-	// Format: - [x] Task title [P1] — due 2026-02-02 <!-- id:5 -->
-	// Also supports: - [x] Task title <!-- id:5 --> (missing priority/date will be filled on next export)
-	re := regexp.MustCompile(`- \[([  x])\] (.+?) (?:\[P([0-4])\] )?(?:— due (\d{4}-\d{2}-\d{2}) )?<!-- id:(\d+) -->`)
+	// Format: - [x] Task title — P1 — id:5 — due:2026-02-02
+	// Also supports partial format (missing priority/date will be filled on next export)
+	re := regexp.MustCompile(`- \[([  x])\] (.+?) — (P[0-4]) — id:(\d+) — due:(\d{4}-\d{2}-\d{2})`)
 	matches := re.FindAllStringSubmatch(string(content), -1)
 
 	for _, match := range matches {
 		checked := match[1] == "x"
 		title := strings.TrimSpace(match[2])
-		priority := match[3] // may be empty
-		dueDate := match[4]  // may be empty
-		id, _ := strconv.Atoi(match[5])
+		priority := match[3] // e.g. "P1"
+		id, _ := strconv.Atoi(match[4])
+		dueDate := match[5]
 
 		// Get current task status
 		task, err := fetchTaskByID(id)
@@ -266,8 +266,8 @@ func syncFromMarkdown() {
 		if title != "" && title != task.Title {
 			updates["title"] = title
 		}
-		if priority != "" && "P"+priority != task.Priority {
-			updates["priority"] = "P" + priority
+		if priority != "" && priority != task.Priority {
+			updates["priority"] = priority
 		}
 		if dueDate != "" && dueDate != task.DueDate {
 			updates["due_date"] = dueDate
