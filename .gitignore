@@ -1,0 +1,14 @@
+# Environment variables
+.env
+
+# Supabase
+supabase/.temp/
+
+# Build artifacts (binaries in root)
+/todo
+/obsidian-sync
+/webhook
+*.exe
+
+# Junie
+.junie/
