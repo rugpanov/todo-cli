@@ -72,7 +72,7 @@ func main() {
 			userID = uid
 			supabaseKey = os.Getenv("SUPABASE_ANON_KEY")
 			if supabaseKey == "" {
-				supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMjkzMTcsImV4cCI6MjA1MzkwNTMxN30.o-EHM0FGwPpJu6Ge7ePMKP_GYNCsOOqSzmLvSgPQbvI"
+ 			supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTMyNjksImV4cCI6MjA4NTUyOTI2OX0.Q3LlZDciuP1Gm-elhl8-FlxCjNi4NlZ9M8PxAqNf1-8"
 			}
 		} else {
 			fmt.Printf("❌ Invalid API token: %v\n", err)

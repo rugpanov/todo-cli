@@ -32,7 +32,7 @@ function loadEnv(): void {
 loadEnv();
 
 const DEFAULT_SUPABASE_URL = 'https://awpmhcblqvvliarpcawk.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzgzMjkzMTcsImV4cCI6MjA1MzkwNTMxN30.o-EHM0FGwPpJu6Ge7ePMKP_GYNCsOOqSzmLvSgPQbvI';
+const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTMyNjksImV4cCI6MjA4NTUyOTI2OX0.Q3LlZDciuP1Gm-elhl8-FlxCjNi4NlZ9M8PxAqNf1-8';
 
 let SUPABASE_URL = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
 let SUPABASE_KEY = '';
@@ -224,18 +224,23 @@ async function cmdAdd(args: string[]): Promise<void> {
 
 async function cmdList(): Promise<void> {
   const today = formatDate(new Date());
-  const tasks: Task[] = await request(
+  const tasks = await request(
     'GET',
     `tasks?user_id=eq.${USER_ID}&status=eq.Todo&order=priority,due_date`
   );
 
-  if (!tasks || tasks.length === 0) {
+  if (!Array.isArray(tasks)) {
+    console.log('❌ Failed to fetch tasks');
+    return;
+  }
+
+  if (tasks.length === 0) {
     console.log('🎉 No pending tasks!');
     return;
   }
 
   console.log('📋 All pending tasks:\n');
-  for (const task of tasks.slice(0, 15)) {
+  for (const task of tasks.slice(0, 15) as Task[]) {
     let color = RESET;
     let suffix = '';
     

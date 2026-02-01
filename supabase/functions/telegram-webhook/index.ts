@@ -1,7 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
-import { crypto } from "https://deno.land/std@0.168.0/crypto/mod.ts"
-import { encodeHex } from "https://deno.land/std@0.168.0/encoding/hex.ts"
+
+// Helper to convert ArrayBuffer to hex string
+function toHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('')
+}
 
 const supabaseUrl = Deno.env.get("SUPABASE_URL")!
 const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
@@ -212,7 +217,7 @@ async function handleToken(chatId: number, text: string): Promise<string> {
   const encoder = new TextEncoder()
   const data = encoder.encode(token)
   const hashBuffer = await crypto.subtle.digest("SHA-256", data)
-  const tokenHash = encodeHex(new Uint8Array(hashBuffer))
+  const tokenHash = toHex(hashBuffer)
   
   // Store in database
   const { error } = await supabase
