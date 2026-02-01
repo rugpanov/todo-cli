@@ -26,16 +26,23 @@ serve(async (req) => {
   }
 
   const chatId = message.chat.id
-  const text = message.text
+  let text = message.text
+
+  // Normalize: support commands without leading slash
+  const firstWord = text.split(" ")[0].toLowerCase()
+  const commandWords = ["add", "list", "ls", "done", "rm", "snooze", "subtask", "token", "revoke", "start"]
+  if (!firstWord.startsWith("/") && commandWords.includes(firstWord)) {
+    text = "/" + text
+  }
 
   let response: string
 
-  if (text.startsWith("/add")) {
+  if (text.startsWith("/add") || text.toLowerCase().startsWith("/add")) {
     response = await handleAdd(chatId, text)
-  } else if (text.startsWith("/list") || text.startsWith("/ls")) {
+  } else if (text.startsWith("/list") || text.startsWith("/ls") || text.toLowerCase() === "/ls") {
     response = await handleList(chatId)
   } else if (text.startsWith("/done") || text.startsWith("/rm")) {
-    response = await handleDone(chatId, text.replace("/rm", "/done"))
+    response = await handleDone(chatId, text.replace(/^\/rm/i, "/done"))
   } else if (text.startsWith("/snooze")) {
     response = await handleSnooze(chatId, text)
   } else if (text.startsWith("/subtask")) {
@@ -45,9 +52,9 @@ serve(async (req) => {
   } else if (text.startsWith("/revoke")) {
     response = await handleRevoke(chatId, text)
   } else if (text.startsWith("/start")) {
-    response = "👋 Welcome to TODO Tracker!\n\nCommands:\n/add <task> - Add task\n/list, /ls - Show tasks\n/done, /rm <id> - Complete task\n/snooze <id> - Postpone to tomorrow\n/subtask <id> <task> - Add subtask\n/token [name] - Generate API token for CLI\n/revoke [id] - List or revoke API tokens"
+    response = "👋 Welcome to TODO Tracker!\n\nCommands:\nadd <task> - Add task\nlist, ls - Show tasks\ndone, rm <id> - Complete task\nsnooze <id> - Postpone to tomorrow\nsubtask <id> <task> - Add subtask\ntoken [name] - Generate API token for CLI\nrevoke [id] - List or revoke API tokens\n\n(Slash prefix is optional)"
   } else {
-    response = "❌ Unknown command. Use /add, /list (ls), /done (rm), /snooze, /subtask, /token, or /revoke"
+    response = "❌ Unknown command. Use add, list (ls), done (rm), snooze, subtask, token, or revoke"
   }
 
   await sendTelegram(chatId, response)
