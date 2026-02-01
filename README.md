@@ -56,8 +56,8 @@ go build -o todo ./cmd/todo/
 # Build
 go build -o obsidian-sync ./cmd/obsidian-sync/
 
-# Set your Obsidian vault path
-export OBSIDIAN_TODO_FILE=~/Documents/Obsidian/todo.md
+# Set your todo file path
+export TODO_CLI_FILE=~/Documents/todo/todo.md
 
 # Export tasks to markdown
 ./obsidian-sync export

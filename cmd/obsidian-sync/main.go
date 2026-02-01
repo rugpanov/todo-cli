@@ -46,7 +46,7 @@ func main() {
 	supabaseURL = os.Getenv("SUPABASE_URL")
 	supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
 	userID = os.Getenv("TELEGRAM_CHAT_ID")
-	todoFile = os.Getenv("OBSIDIAN_TODO_FILE")
+	todoFile = os.Getenv("TODO_CLI_FILE")
 
 	if supabaseURL == "" || supabaseKey == "" {
 		fmt.Println("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
@@ -54,9 +54,9 @@ func main() {
 	}
 
 	if todoFile == "" {
-		fmt.Println("❌ Missing OBSIDIAN_TODO_FILE environment variable")
-		fmt.Println("   Set it to your Obsidian todo.md path, e.g.:")
-		fmt.Println("   export OBSIDIAN_TODO_FILE=~/Documents/Obsidian/todo.md")
+		fmt.Println("❌ Missing TODO_CLI_FILE environment variable")
+		fmt.Println("   Set it to your todo.md path, e.g.:")
+		fmt.Println("   export TODO_CLI_FILE=~/Documents/todo/todo.md")
 		os.Exit(1)
 	}
 
@@ -89,7 +89,7 @@ Commands:
   help      Show this help message
 
 Environment:
-  OBSIDIAN_TODO_FILE  Path to your todo.md file (required)`)
+  TODO_CLI_FILE       Path to your todo.md file (required)`)
 			return
 		}
 	}

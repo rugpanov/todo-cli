@@ -186,7 +186,7 @@ todo subtask 2 "Review section"     # Add subtask to task #2
 - [x] `obsidian-sync export` command
 - [x] Groups tasks by: Overdue, Today, Upcoming
 - [x] Markdown format with hidden ID comments
-- [x] Configurable via `OBSIDIAN_TODO_FILE` env var
+- [x] Configurable via `TODO_CLI_FILE` env var
 
 ### 7.2 Watch Mode (Obsidian → Supabase)
 - [x] `obsidian-sync watch` command
@@ -197,8 +197,8 @@ todo subtask 2 "Review section"     # Add subtask to task #2
 
 ### 7.3 Usage
 ```bash
-# Set path to your Obsidian todo file
-export OBSIDIAN_TODO_FILE=~/Documents/Obsidian/todo.md
+# Set path to your todo file
+export TODO_CLI_FILE=~/Documents/todo/todo.md
 
 # Export tasks to markdown
 ./obsidian-sync export
