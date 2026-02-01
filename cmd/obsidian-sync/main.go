@@ -223,12 +223,8 @@ func formatTaskMD(t Task) string {
 	if t.Status == "Done" {
 		checkbox = "- [x]"
 	}
-	dueInfo := ""
-	today := time.Now().Format("2006-01-02")
-	if t.DueDate != today {
-		dueInfo = fmt.Sprintf(" — due %s", t.DueDate)
-	}
-	return fmt.Sprintf("%s [%s] %s%s <!-- id:%d -->\n", checkbox, t.Priority, t.Title, dueInfo, t.ID)
+	// Format: - [ ] Task title [P1] — due 2026-02-02 <!-- id:5 -->
+	return fmt.Sprintf("%s %s [%s] — due %s <!-- id:%d -->\n", checkbox, t.Title, t.Priority, t.DueDate, t.ID)
 }
 
 func syncFromMarkdown() {
@@ -239,13 +235,17 @@ func syncFromMarkdown() {
 	}
 
 	// Parse checkboxes with IDs
-	// Format: - [x] [P1] Task title — due 2026-02-02 <!-- id:5 -->
-	re := regexp.MustCompile(`- \[([ x])\] \[P\d\] .* <!-- id:(\d+) -->`)
+	// Format: - [x] Task title [P1] — due 2026-02-02 <!-- id:5 -->
+	// Also supports: - [x] Task title <!-- id:5 --> (missing priority/date will be filled on next export)
+	re := regexp.MustCompile(`- \[([  x])\] (.+?) (?:\[P([0-4])\] )?(?:— due (\d{4}-\d{2}-\d{2}) )?<!-- id:(\d+) -->`)
 	matches := re.FindAllStringSubmatch(string(content), -1)
 
 	for _, match := range matches {
 		checked := match[1] == "x"
-		id, _ := strconv.Atoi(match[2])
+		title := strings.TrimSpace(match[2])
+		priority := match[3] // may be empty
+		dueDate := match[4]  // may be empty
+		id, _ := strconv.Atoi(match[5])
 
 		// Get current task status
 		task, err := fetchTaskByID(id)
@@ -258,15 +258,33 @@ func syncFromMarkdown() {
 			newStatus = "Done"
 		}
 
+		// Check what needs updating
+		updates := make(map[string]interface{})
 		if task.Status != newStatus {
-			err = updateTaskStatus(id, newStatus)
+			updates["status"] = newStatus
+		}
+		if title != "" && title != task.Title {
+			updates["title"] = title
+		}
+		if priority != "" && "P"+priority != task.Priority {
+			updates["priority"] = "P" + priority
+		}
+		if dueDate != "" && dueDate != task.DueDate {
+			updates["due_date"] = dueDate
+		}
+
+		if len(updates) > 0 {
+			err = updateTask(id, updates)
 			if err != nil {
 				fmt.Printf("❌ Failed to update task %d: %v\n", id, err)
 			} else {
-				fmt.Printf("✅ Task %d: %s → %s\n", id, task.Status, newStatus)
+				fmt.Printf("✅ Task %d updated\n", id)
 			}
 		}
 	}
+
+	// Re-export to fill in any missing priority/due date
+	exportToMarkdown()
 }
 
 // API helpers
@@ -308,9 +326,9 @@ func fetchTaskByID(id int) (*Task, error) {
 	return &tasks[0], nil
 }
 
-func updateTaskStatus(id int, status string) error {
+func updateTask(id int, updates map[string]interface{}) error {
 	url := fmt.Sprintf("%s/rest/v1/tasks?id=eq.%d", supabaseURL, id)
-	body, _ := json.Marshal(map[string]string{"status": status})
+	body, _ := json.Marshal(updates)
 	req, _ := http.NewRequest("PATCH", url, bytes.NewBuffer(body))
 	req.Header.Set("apikey", supabaseKey)
 	req.Header.Set("Authorization", "Bearer "+supabaseKey)
