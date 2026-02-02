@@ -44,13 +44,22 @@ func main() {
 	}
 	godotenv.Load()
 
-	supabaseURL = os.Getenv("SUPABASE_URL")
-	supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-	userID = os.Getenv("TELEGRAM_CHAT_ID")
+	supabaseURL = os.Getenv("TODO_CLI_SUPABASE_URL")
+	if supabaseURL == "" {
+		supabaseURL = os.Getenv("SUPABASE_URL")
+	}
+	supabaseKey = os.Getenv("TODO_CLI_SUPABASE_SERVICE_ROLE_KEY")
+	if supabaseKey == "" {
+		supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+	}
+	userID = os.Getenv("TODO_CLI_TELEGRAM_CHAT_ID")
+	if userID == "" {
+		userID = os.Getenv("TELEGRAM_CHAT_ID")
+	}
 	todoFile = os.Getenv("TODO_CLI_FILE")
 
 	if supabaseURL == "" || supabaseKey == "" {
-		fmt.Println("❌ Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY")
+		fmt.Println("❌ Missing TODO_CLI_SUPABASE_URL or TODO_CLI_SUPABASE_SERVICE_ROLE_KEY")
 		os.Exit(1)
 	}
 

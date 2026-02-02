@@ -49,13 +49,19 @@ func main() {
 	}
 	godotenv.Load() // Also try current directory
 
-	supabaseURL = os.Getenv("SUPABASE_URL")
+	supabaseURL = os.Getenv("TODO_CLI_SUPABASE_URL")
+	if supabaseURL == "" {
+		supabaseURL = os.Getenv("SUPABASE_URL")
+	}
 	if supabaseURL == "" {
 		supabaseURL = "https://awpmhcblqvvliarpcawk.supabase.co"
 	}
 
 	// Try token-based auth first
 	apiToken = os.Getenv("TODO_CLI_TOKEN")
+	if apiToken == "" {
+		apiToken = os.Getenv("TODO_CLI_API_TOKEN")
+	}
 	if apiToken == "" {
 		// Try reading from ~/.todo-cli-token
 		if home, err := os.UserHomeDir(); err == nil {
@@ -70,7 +76,10 @@ func main() {
 		if uid, err := verifyToken(apiToken); err == nil {
 			authMode = AuthModeToken
 			userID = uid
-			supabaseKey = os.Getenv("SUPABASE_ANON_KEY")
+			supabaseKey = os.Getenv("TODO_CLI_SUPABASE_ANON_KEY")
+			if supabaseKey == "" {
+				supabaseKey = os.Getenv("SUPABASE_ANON_KEY")
+			}
 			if supabaseKey == "" {
  			supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTMyNjksImV4cCI6MjA4NTUyOTI2OX0.Q3LlZDciuP1Gm-elhl8-FlxCjNi4NlZ9M8PxAqNf1-8"
 			}
@@ -81,8 +90,14 @@ func main() {
 	} else {
 		// Fall back to service role key (legacy mode)
 		authMode = AuthModeServiceKey
-		supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
-		userID = os.Getenv("TELEGRAM_CHAT_ID")
+		supabaseKey = os.Getenv("TODO_CLI_SUPABASE_SERVICE_ROLE_KEY")
+		if supabaseKey == "" {
+			supabaseKey = os.Getenv("SUPABASE_SERVICE_ROLE_KEY")
+		}
+		userID = os.Getenv("TODO_CLI_TELEGRAM_CHAT_ID")
+		if userID == "" {
+			userID = os.Getenv("TELEGRAM_CHAT_ID")
+		}
 
 		if supabaseKey == "" {
 			fmt.Println("❌ No API token found. Generate one with /token in Telegram bot.")

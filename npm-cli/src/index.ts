@@ -34,16 +34,19 @@ loadEnv();
 const DEFAULT_SUPABASE_URL = 'https://awpmhcblqvvliarpcawk.supabase.co';
 const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImF3cG1oY2JscXZ2bGlhcnBjYXdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTMyNjksImV4cCI6MjA4NTUyOTI2OX0.Q3LlZDciuP1Gm-elhl8-FlxCjNi4NlZ9M8PxAqNf1-8';
 
-let SUPABASE_URL = process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+let SUPABASE_URL = process.env.TODO_CLI_SUPABASE_URL || process.env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
 let SUPABASE_KEY = '';
 let USER_ID = '';
 let API_TOKEN = '';
 
 // Try to load API token
 function loadApiToken(): string {
-  // Check env var first
+  // Check env var first (TODO_CLI_ prefix takes priority)
   if (process.env.TODO_CLI_TOKEN) {
     return process.env.TODO_CLI_TOKEN;
+  }
+  if (process.env.TODO_CLI_API_TOKEN) {
+    return process.env.TODO_CLI_API_TOKEN;
   }
   // Try ~/.todo-cli-token
   const tokenPath = path.join(process.env.HOME || '', '.todo-cli-token');
@@ -91,15 +94,15 @@ async function initAuth(): Promise<void> {
   if (API_TOKEN) {
     try {
       USER_ID = await verifyToken(API_TOKEN);
-      SUPABASE_KEY = process.env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+      SUPABASE_KEY = process.env.TODO_CLI_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
     } catch (err: any) {
       console.error(`❌ Invalid API token: ${err.message}`);
       process.exit(1);
     }
   } else {
     // Fall back to service role key (legacy mode)
-    SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
-    USER_ID = process.env.TELEGRAM_CHAT_ID || 'cli';
+    SUPABASE_KEY = process.env.TODO_CLI_SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+    USER_ID = process.env.TODO_CLI_TELEGRAM_CHAT_ID || process.env.TELEGRAM_CHAT_ID || 'cli';
     
     if (!SUPABASE_KEY) {
       console.error('❌ No API token found. Generate one with /token in Telegram bot.');
